@@ -1,9 +1,13 @@
 package com.akr.controllers;
 
+import com.akr.dtos.LoginRequestDTO;
+import com.akr.dtos.UserRegistrationDTO;
 import com.akr.entities.User;
 import com.akr.repos.UserRepo;
 import com.akr.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,20 +37,32 @@ public class UserController {
         return (CsrfToken) request.getAttribute("_csrf");
     }
 
-
-    @GetMapping("/users")
+    @GetMapping("/admin")
+    public String admin() {
+        return "Hello Admin";
+    }
+    @GetMapping("/user")
+    public String user() {
+        return "Hello User";
+    }
+    @GetMapping("/user/all")
     public List<User> getUsers() {
         return userRepo.findAll();
     }
 
     @PostMapping("/register")
-    public User register(@RequestBody User user) {
-        return userService.register(user);
+    public ResponseEntity<String> registerUser(@RequestBody UserRegistrationDTO registrationDTO) {
+        try {
+            User user = userService.registerNewUser(registrationDTO);
+            return ResponseEntity.ok("User registered successfully: " + user.getUsername());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/login")
-    public User loginUser(@RequestBody User user){
-        return userService.verify(user);
+    public ResponseEntity<String> login(@RequestBody LoginRequestDTO loginRequest) {
+        return new ResponseEntity<>(userService.verify(loginRequest), HttpStatus.OK);
     }
 
 }

@@ -1,15 +1,15 @@
 package com.akr.entities;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.List;
+
+import java.util.stream.Collectors;
 
 public class CustomUserDetails implements UserDetails {
 
-    final private User user;
+    private final User user;
 
     public CustomUserDetails(User user) {
         this.user = user;
@@ -17,7 +17,9 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("USER"));
+        return user.getRoles().stream()
+                .map(role -> (GrantedAuthority) role::getName)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -47,6 +49,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return user.isEnabled();
     }
 }
