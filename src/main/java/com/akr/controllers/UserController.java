@@ -1,6 +1,8 @@
 package com.akr.controllers;
 
 import com.akr.entities.User;
+import com.akr.repos.UserRepo;
+import com.akr.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,20 +10,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
 public class UserController {
 
-    private List<User> users = new ArrayList<>(
-            List.of(
-            new User("user1", "password1"),
-            new User("user2", "password2"),
-            new User("user3", "password3")
-            )
-    );
+    final private UserRepo userRepo;
+    final private UserService userService;
 
+    public UserController(UserRepo userRepo, UserService userService){
+        this.userRepo = userRepo;
+        this.userService = userService;
+    }
 
     @GetMapping("/")
     public String hello() {
@@ -36,13 +36,17 @@ public class UserController {
 
     @GetMapping("/users")
     public List<User> getUsers() {
-        return users;
+        return userRepo.findAll();
     }
 
-    @PostMapping("/users")
-    public User addUser(@RequestBody User user) {
-        users.add(user);
-        return user;
+    @PostMapping("/register")
+    public User register(@RequestBody User user) {
+        return userService.register(user);
+    }
+
+    @PostMapping("/login")
+    public User loginUser(@RequestBody User user){
+        return userService.verify(user);
     }
 
 }
