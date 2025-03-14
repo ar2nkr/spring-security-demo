@@ -2,11 +2,14 @@ package com.akr.dtos;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 @Getter
 @Setter
-public class UserRegistrationDTO {
+public class RegisterRequest {
     private String username;
     private String password;
-    private String role; // Accepts "ROLE_USER" or "ROLE_ADMIN"
+    private Set<String> roles; // List of role names
+
 }
 

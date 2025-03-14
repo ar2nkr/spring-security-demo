@@ -1,12 +1,12 @@
 package com.akr.controllers;
 
-import com.akr.dtos.LoginRequestDTO;
-import com.akr.dtos.UserRegistrationDTO;
+import com.akr.dtos.AuthResponse;
+import com.akr.dtos.LoginRequest;
+import com.akr.dtos.RegisterRequest;
 import com.akr.entities.User;
 import com.akr.repos.UserRepo;
 import com.akr.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,19 +50,15 @@ public class UserController {
         return userRepo.findAll();
     }
 
+    // Register endpoint
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody UserRegistrationDTO registrationDTO) {
-        try {
-            User user = userService.registerNewUser(registrationDTO);
-            return ResponseEntity.ok("User registered successfully: " + user.getUsername());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<AuthResponse> registerUser(@RequestBody RegisterRequest request) {
+        return userService.registerUser(request);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequestDTO loginRequest) {
-        return new ResponseEntity<>(userService.verify(loginRequest), HttpStatus.OK);
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+        return userService.loginUser(loginRequest);
     }
 
 }

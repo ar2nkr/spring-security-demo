@@ -1,19 +1,27 @@
 package com.akr.services;
 
-import com.akr.dtos.LoginRequestDTO;
-import com.akr.dtos.UserRegistrationDTO;
+import com.akr.dtos.AuthResponse;
+import com.akr.dtos.LoginRequest;
+import com.akr.dtos.RegisterRequest;
 import com.akr.entities.Role;
 import com.akr.entities.User;
 import com.akr.repos.RoleRepo;
 import com.akr.repos.UserRepo;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -32,34 +40,48 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    public User registerNewUser(UserRegistrationDTO registrationDTO) {
-        if (userRepo.findByUsername(registrationDTO.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already taken");
+    public ResponseEntity<AuthResponse> registerUser(RegisterRequest request) {
+        if (userRepo.findByUsername(request.getUsername()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new AuthResponse("Error: Username is already taken!"));
         }
 
+        // Create new user
         User user = new User();
-        user.setUsername(registrationDTO.getUsername());
-        user.setPassword(bCryptPasswordEncoder.encode(registrationDTO.getPassword()));
-        user.setEnabled(true);
+        user.setUsername(request.getUsername());
+        user.setPassword(bCryptPasswordEncoder.encode(request.getPassword()));
 
-        // Assigning Role
-        Role role = roleRepo.findByName(registrationDTO.getRole());
-        if (role == null) {
-            throw new RuntimeException("Invalid role: " + registrationDTO.getRole());
+        // Assign roles
+        Set<Role> roles = new HashSet<>();
+        if (request.getRoles() == null || request.getRoles().isEmpty()) {
+            Role defaultRole = roleRepo.findByName("ROLE_USER")
+                    .orElseGet(() -> roleRepo.save(new Role("ROLE_USER")));
+            roles.add(defaultRole);
+        } else {
+            roles = request.getRoles().stream()
+                    .map(roleName -> roleRepo.findByName(roleName)
+                            .orElseThrow(() -> new RuntimeException("Error: Role " + roleName + " not found")))
+                    .collect(Collectors.toSet());
         }
 
-        user.setRoles(Collections.singleton(role));
+        user.setRoles(roles);
+        userRepo.save(user);
 
-        return userRepo.save(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse("User registered successfully!"));
     }
 
-    public String verify(LoginRequestDTO loginRequestDTO) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequestDTO.getUsername(), loginRequestDTO.getPassword())
-        );
-//        return authentication.isAuthenticated() ? user : null;
-//        return userRepo.findById(user.getId()).orElseThrow(()-> new UsernameNotFoundException("user not found"));
-        if(!authentication.isAuthenticated()) throw new UsernameNotFoundException("no user found");
-        return jwtService.generateToken(loginRequestDTO.getUsername());
+    public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest request) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String jwtToken = jwtService.generateToken(userDetails.getUsername());
+
+            return ResponseEntity.ok(new AuthResponse("Login successful!", jwtToken));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(new AuthResponse("Invalid username or password!"));
+        }
     }
 }
